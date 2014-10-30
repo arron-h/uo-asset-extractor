@@ -49,57 +49,57 @@ int extractPixelChunkFromAnim(FILE* mulFile, const UOAE_UWORD* palette, int stri
 
 	if (chunkHeader == 0x7FFF7FFF) // Completed marker
 		return UOAE_READ_COMPLETE;
-    
-    chunkHeader ^= (0x200 << 22) | (0x200 << 12); // Remove the sign bit
-    
-    int xOffset    =  (chunkHeader >> 22) & 0x3FF;
-    int yOffset    = ((chunkHeader >> 12) & 0x3FF) * stride;
-    int pixelCount =   chunkHeader & 0xFFF;
-    
-    UOAE_UDWORD* curPtr = ptr + yOffset + xOffset;
-    UOAE_UDWORD* endPtr = curPtr + pixelCount;
-    
-    while (!feof(mulFile) && curPtr < endPtr)
-    {
-        UOAE_UBYTE paletteIdx;
-        fread(&paletteIdx, sizeof(UOAE_UBYTE), 1, mulFile);
-        
-        UOAE_UWORD argb1555 = palette[paletteIdx];
 
-        unsigned int rgba8888 = ( ((( argb1555 >> 10) & 0x1F) * 0xFF / 0x1F) |
-                                  ((((argb1555 >> 5) & 0x1F) * 0xFF / 0x1F) << 8) |
-                                  ((( argb1555 & 0x1F) * 0xFF / 0x1F) << 16) |
-                                  (   0xFF << 24) );
-        
-        *curPtr++ = rgba8888;
-    }
-    
+	chunkHeader ^= (0x200 << 22) | (0x200 << 12); // Remove the sign bit
+
+	int xOffset    =  (chunkHeader >> 22) & 0x3FF;
+	int yOffset    = ((chunkHeader >> 12) & 0x3FF) * stride;
+	int pixelCount =   chunkHeader & 0xFFF;
+
+	UOAE_UDWORD* curPtr = ptr + yOffset + xOffset;
+	UOAE_UDWORD* endPtr = curPtr + pixelCount;
+
+	while (!feof(mulFile) && curPtr < endPtr)
+	{
+		UOAE_UBYTE paletteIdx;
+		fread(&paletteIdx, sizeof(UOAE_UBYTE), 1, mulFile);
+
+		UOAE_UWORD argb1555 = palette[paletteIdx];
+
+		unsigned int rgba8888 = ( ((( argb1555 >> 10) & 0x1F) * 0xFF / 0x1F) |
+		                          ((((argb1555 >> 5) & 0x1F) * 0xFF / 0x1F) << 8) |
+		                          ((( argb1555 & 0x1F) * 0xFF / 0x1F) << 16) |
+		                          (   0xFF << 24) );
+
+		*curPtr++ = rgba8888;
+	}
+
 	return UOAE_OK;
 }
 
 void writeDebugPpm(int imgIdx, const UOAE_UDWORD* rgbaBuffer, UOAE_WORD width, UOAE_WORD height)
 {
-    char outpathBuffer[256];
-    sprintf(outpathBuffer, "/Users/arronhartley/tmp/%d.ppm", imgIdx);
-    FILE* ppmFile = fopen(outpathBuffer, "wb");
-    
-    if (ppmFile)
-    {
-        fprintf(ppmFile, "P6\n%d %d\n255\n", (int)width, (int)height);
-        
-        const UOAE_UDWORD* bufPtr = rgbaBuffer;
-        for (int i = 0; i < width * height; ++i)
-        {
-            UOAE_UBYTE rgb[3];
-            rgb[0] = bufPtr[i] & 0xFF;  // R
-            rgb[1] = (bufPtr[i] >> 8) & 0xFF;  // G
-            rgb[2] = (bufPtr[i] >> 16) & 0xFF;  // B
-            fwrite(rgb, sizeof(UOAE_UBYTE), 3, ppmFile);
-            bufPtr++;
-        }
-        
-        fclose(ppmFile);
-    }
+	char outpathBuffer[256];
+	sprintf(outpathBuffer, "/Users/arronhartley/tmp/%d.ppm", imgIdx);
+	FILE* ppmFile = fopen(outpathBuffer, "wb");
+
+	if (ppmFile)
+	{
+		fprintf(ppmFile, "P6\n%d %d\n255\n", (int)width, (int)height);
+
+		const UOAE_UDWORD* bufPtr = rgbaBuffer;
+		for (int i = 0; i < width * height; ++i)
+		{
+			UOAE_UBYTE rgb[3];
+			rgb[0] = bufPtr[i] & 0xFF;         // R
+			rgb[1] = (bufPtr[i] >> 8) & 0xFF;  // G
+			rgb[2] = (bufPtr[i] >> 16) & 0xFF; // B
+			fwrite(rgb, sizeof(UOAE_UBYTE), 3, ppmFile);
+			bufPtr++;
+		}
+
+		fclose(ppmFile);
+	}
 
 }
 
@@ -112,30 +112,30 @@ int extractFrameFromAnim(FILE* mulFile, const char* outputPath, const UOAE_UWORD
 	fread(&bitmapDescriptor.width,   sizeof(UOAE_WORD), 1, mulFile);
 	fread(&bitmapDescriptor.height,  sizeof(UOAE_WORD), 1, mulFile);
 
-	UOAE_DEBUG_OUTPUT("\t\tFrame x:%d y:%d w:%d h:%d", bitmapDescriptor.centreX, 
+	UOAE_DEBUG_OUTPUT("\t\tFrame x:%d y:%d w:%d h:%d", bitmapDescriptor.centreX,
 		bitmapDescriptor.centreY, bitmapDescriptor.width, bitmapDescriptor.height);
 
 	UOAE_UDWORD* rgbaBuffer = (UOAE_UDWORD*)malloc(bitmapDescriptor.width * bitmapDescriptor.height * sizeof(UOAE_UDWORD));
 	memset(rgbaBuffer, 0, bitmapDescriptor.width * bitmapDescriptor.height * sizeof(UOAE_UDWORD));
-    
-    UOAE_UDWORD* ptr = rgbaBuffer;
-    int stride = (bitmapDescriptor.width * sizeof(UOAE_UDWORD)) >> 2;
-    
-    int xBase = bitmapDescriptor.centreX - 0x200;
-    int yBase = (bitmapDescriptor.centreY + bitmapDescriptor.height) - 0x200;
-    
-    ptr += xBase;
-    ptr += yBase * stride;
 
-	while(!feof(mulFile) && 
+	UOAE_UDWORD* ptr = rgbaBuffer;
+	int stride = (bitmapDescriptor.width * sizeof(UOAE_UDWORD)) >> 2;
+
+	int xBase = bitmapDescriptor.centreX - 0x200;
+	int yBase = (bitmapDescriptor.centreY + bitmapDescriptor.height) - 0x200;
+
+	ptr += xBase;
+	ptr += yBase * stride;
+
+	while(!feof(mulFile) &&
 		extractPixelChunkFromAnim(mulFile, palette, stride, ptr) != UOAE_READ_COMPLETE)
 	{
 	}
-    
+
 #if 1
-    static int debugImageCount = 0;
-    writeDebugPpm(debugImageCount, rgbaBuffer, bitmapDescriptor.width, bitmapDescriptor.height);
-    debugImageCount++;
+	static int debugImageCount = 0;
+	writeDebugPpm(debugImageCount, rgbaBuffer, bitmapDescriptor.width, bitmapDescriptor.height);
+	debugImageCount++;
 #endif
 
 	free(rgbaBuffer);
@@ -146,11 +146,11 @@ int extractFrameFromAnim(FILE* mulFile, const char* outputPath, const UOAE_UWORD
 int extractFromMul(FILE* mulFile, const char* outputPath, const IndexReference* ref)
 {
 	fseek(mulFile, ref->offset, SEEK_SET);
-	
+
 	UOAE_UWORD palette[256];
 	UOAE_DWORD  frameCount   = 0;
-	fread(palette,      sizeof(UOAE_WORD),  256, mulFile);
-	fread(&frameCount,  sizeof(UOAE_DWORD), 1, mulFile);
+	fread(palette,     sizeof(UOAE_WORD),  256, mulFile);
+	fread(&frameCount, sizeof(UOAE_DWORD), 1, mulFile);
 
 	UOAE_DWORD* frameOffsets = (UOAE_DWORD*)malloc(frameCount * sizeof(UOAE_DWORD));
 	fread(frameOffsets, sizeof(UOAE_DWORD), frameCount, mulFile);
@@ -160,7 +160,7 @@ int extractFromMul(FILE* mulFile, const char* outputPath, const IndexReference* 
 	int frameIdx = 0;
 	while(!feof(mulFile) && frameIdx < frameCount)
 	{
-        int frameStartOffset = ref->offset + sizeof(UOAE_WORD) * 256 + frameOffsets[frameIdx];
+		int frameStartOffset = ref->offset + sizeof(UOAE_WORD) * 256 + frameOffsets[frameIdx];
 		fseek(mulFile, frameStartOffset, SEEK_SET);
 
 		UOAE_DEBUG_OUTPUT("\t\tFrame %d is %d bytes offset", frameIdx, frameOffsets[frameIdx]);
@@ -181,7 +181,7 @@ int extractAnim(const char* assetPath, const char* outputPath)
 	// Try load the index file
 	if (strlen(assetPath) + 10 > PATH_BUFFER_LENGTH)
 		return UOAE_ERROR;
-	
+
 	char pathBuffer[256];
 	sprintf(pathBuffer, "%s/anim.idx", assetPath);
 	FILE* indexFile = fopen(pathBuffer, "rb");
@@ -219,12 +219,30 @@ int extractAnim(const char* assetPath, const char* outputPath)
 	return UOAE_OK;
 }
 
+void printUsage(const char* binaryName)
+{
+	printf("Usage: %s [--help] ASSET_PATH ASSET_TYPE OUTPUT_PATH\n\n", binaryName);
+	puts("Arguments:");
+	puts("\t--help\t\t\tThis help (optional)");
+	puts("\tASSET_PATH\t\tPath to the asset (probably the UO root folder)");
+	puts("\tASSET_TYPE\t\tThe asset type to extract. Values:");
+	puts("\t\t\t\t\tanim");
+	puts("\tOUTPUT_PATH\t\tPath where the extracted assets will be dumped");
+}
+
 int main(int numArgs, char** args)
 {
+	if (numArgs > 1 && strcmp(args[1], "--help") == 0)
+	{
+		printUsage(args[0]);
+		return 0;
+	}
+
 	if (numArgs <= 3)
 	{
-		puts("Invalid number of arguments. Usage:");
-		printf("\t%s [assetPath] [assetType (anim)] [outputPath]\n", args[0]);
+		puts("Invalid number of arguments.");
+		printUsage(args[0]);
+
 		return 1;
 	}
 
@@ -237,3 +255,4 @@ int main(int numArgs, char** args)
 
 	return 0;
 }
+
