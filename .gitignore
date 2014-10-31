@@ -1,3 +1,4 @@
 assets/
 Build/
 
+.ycm_extra_conf.*

@@ -1,26 +1,9 @@
-#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 
-#define UOAE_DEBUG_OUTPUT(x, ...) printf((x"\n"), __VA_ARGS__);
-
-#define UOAE_OK    0
-#define UOAE_ERROR 1
-#define UOAE_READ_COMPLETE 2
-
-#define UOAE_CHAR  char
-#define UOAE_BYTE  signed char
-#define UOAE_UBYTE unsigned char
-#define UOAE_WORD  short
-#define UOAE_UWORD unsigned short
-#define UOAE_DWORD int
-#define UOAE_UDWORD int
-
-typedef struct
-{
-	int offset;
-	int size;
-} IndexReference;
+#include "uoae.h"
+#include "anim.h"
+#include "dataindex.h"
 
 typedef struct
 {
@@ -29,18 +12,6 @@ typedef struct
 	UOAE_WORD width;
 	UOAE_WORD height;
 } BitmapDescriptor;
-
-int getNextIndex(FILE* fileHandle, IndexReference* ref)
-{
-	if (feof(fileHandle))
-		return UOAE_ERROR;
-
-	fread(&ref->offset, sizeof(UOAE_DWORD), 1, fileHandle);
-	fread(&ref->size, sizeof(UOAE_DWORD), 1, fileHandle);
-	fseek(fileHandle, sizeof(UOAE_DWORD), SEEK_CUR);
-
-	return UOAE_OK;
-}
 
 int extractPixelChunkFromAnim(FILE* mulFile, const UOAE_UWORD* palette, int stride, UOAE_UDWORD* ptr)
 {
@@ -176,83 +147,49 @@ int extractFromMul(FILE* mulFile, const char* outputPath, const IndexReference* 
 
 int extractAnim(const char* assetPath, const char* outputPath)
 {
-	static const int PATH_BUFFER_LENGTH = 256;
-
 	// Try load the index file
-	if (strlen(assetPath) + 10 > PATH_BUFFER_LENGTH)
-		return UOAE_ERROR;
+	int filenameBufferSize = strlen(assetPath) + strlen("/anim.xxx") + 1;
+	char* filenameBuffer = (char*)malloc(filenameBufferSize);
 
-	char pathBuffer[256];
-	sprintf(pathBuffer, "%s/anim.idx", assetPath);
-	FILE* indexFile = fopen(pathBuffer, "rb");
+	sprintf(filenameBuffer, "%s/anim.idx", assetPath);
+	FILE* indexFile = fopen(filenameBuffer, "rb");
 	if (!indexFile)
 	{
-		printf("ERROR: Failed to open %s\n", pathBuffer);
-		return UOAE_ERROR;
+		printf("ERROR: Failed to open %s\n", filenameBuffer);
 	}
 
-	sprintf(pathBuffer, "%s/anim.mul", assetPath);
-	FILE* mulFile = fopen(pathBuffer, "rb");
+	sprintf(filenameBuffer, "%s/anim.mul", assetPath);
+	FILE* mulFile = fopen(filenameBuffer, "rb");
 	if (!mulFile)
 	{
-		printf("ERROR: Failed to open %s\n", pathBuffer);
-		return UOAE_ERROR;
+		printf("ERROR: Failed to open %s\n", filenameBuffer);
 	}
 
-	// Read an index
-	IndexReference animIdx;
-	int tempCount = 0;
-	while(getNextIndex(indexFile, &animIdx) == 0 && tempCount < 10)
+	if (indexFile && mulFile)
 	{
-		if (animIdx.offset == -1 || animIdx.size == -1)
-			continue;
+		// Read an index
+		IndexReference animIdx;
+		int tempCount = 0;
+		while(getNextIndex(indexFile, &animIdx) == 0 && tempCount < 10)
+		{
+			if (animIdx.offset == -1 || animIdx.size == -1)
+				continue;
 
-		UOAE_DEBUG_OUTPUT("Got index offset: %d size: %d", animIdx.offset, animIdx.size);
-		extractFromMul(mulFile, outputPath, &animIdx);
+			UOAE_DEBUG_OUTPUT("Got index offset: %d size: %d", animIdx.offset, animIdx.size);
+			extractFromMul(mulFile, outputPath, &animIdx);
 
-		tempCount++;
+			tempCount++;
+		}
 	}
 
-	fclose(indexFile);
-	fclose(mulFile);
+	if (indexFile)
+		fclose(indexFile);
+
+	if (mulFile)
+		fclose(mulFile);
+
+	free(filenameBuffer);
 
 	return UOAE_OK;
-}
-
-void printUsage(const char* binaryName)
-{
-	printf("Usage: %s [--help] ASSET_PATH ASSET_TYPE OUTPUT_PATH\n\n", binaryName);
-	puts("Arguments:");
-	puts("\t--help\t\t\tThis help (optional)");
-	puts("\tASSET_PATH\t\tPath to the asset (probably the UO root folder)");
-	puts("\tASSET_TYPE\t\tThe asset type to extract. Values:");
-	puts("\t\t\t\t\tanim");
-	puts("\tOUTPUT_PATH\t\tPath where the extracted assets will be dumped");
-}
-
-int main(int numArgs, char** args)
-{
-	if (numArgs > 1 && strcmp(args[1], "--help") == 0)
-	{
-		printUsage(args[0]);
-		return 0;
-	}
-
-	if (numArgs <= 3)
-	{
-		puts("Invalid number of arguments.");
-		printUsage(args[0]);
-
-		return 1;
-	}
-
-	const char* assetPath  = args[1];
-	const char* assetType  = args[2];
-	const char* outputPath = args[3];
-
-	if (strcmp(assetType, "anim") == 0)
-		return extractAnim(assetPath, outputPath);
-
-	return 0;
 }
 
