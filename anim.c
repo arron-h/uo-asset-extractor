@@ -4,6 +4,7 @@
 #include "uoae.h"
 #include "anim.h"
 #include "dataindex.h"
+#include "pngspritewriter.h"
 
 typedef struct
 {
@@ -48,35 +49,11 @@ int extractPixelChunkFromAnim(FILE* mulFile, const UOAE_UWORD* palette, int stri
 	return UOAE_OK;
 }
 
-void writeDebugPpm(int imgIdx, const UOAE_UDWORD* rgbaBuffer, UOAE_WORD width, UOAE_WORD height)
-{
-	char outpathBuffer[256];
-	sprintf(outpathBuffer, "/Users/arronhartley/tmp/%d.ppm", imgIdx);
-	FILE* ppmFile = fopen(outpathBuffer, "wb");
-
-	if (ppmFile)
-	{
-		fprintf(ppmFile, "P6\n%d %d\n255\n", (int)width, (int)height);
-
-		const UOAE_UDWORD* bufPtr = rgbaBuffer;
-		for (int i = 0; i < width * height; ++i)
-		{
-			UOAE_UBYTE rgb[3];
-			rgb[0] = bufPtr[i] & 0xFF;         // R
-			rgb[1] = (bufPtr[i] >> 8) & 0xFF;  // G
-			rgb[2] = (bufPtr[i] >> 16) & 0xFF; // B
-			fwrite(rgb, sizeof(UOAE_UBYTE), 3, ppmFile);
-			bufPtr++;
-		}
-
-		fclose(ppmFile);
-	}
-
-}
-
 int extractFrameFromAnim(FILE* mulFile, const char* outputPath, const UOAE_UWORD* palette)
 {
 	BitmapDescriptor bitmapDescriptor;
+
+	unsigned long frameNumber = ftell(mulFile);
 
 	fread(&bitmapDescriptor.centreX, sizeof(UOAE_WORD), 1, mulFile);
 	fread(&bitmapDescriptor.centreY, sizeof(UOAE_WORD), 1, mulFile);
@@ -103,12 +80,16 @@ int extractFrameFromAnim(FILE* mulFile, const char* outputPath, const UOAE_UWORD
 	{
 	}
 
-#if 1
-	static int debugImageCount = 0;
-	writeDebugPpm(debugImageCount, rgbaBuffer, bitmapDescriptor.width, bitmapDescriptor.height);
-	debugImageCount++;
-#endif
+	// Write the sprite
+	// TODO - probably want to write the sheet, not just this file.
+	char* outputFilenameBuffer = (char*)malloc(strlen(outputPath) + 11 +
+			strlen(".png"));
+	sprintf(outputFilenameBuffer, "%s/%lu.png", outputPath, frameNumber);
 
+	writeSinglePng(bitmapDescriptor.width, bitmapDescriptor.height, rgbaBuffer,
+			outputFilenameBuffer);
+
+	free(outputFilenameBuffer);
 	free(rgbaBuffer);
 
 	return UOAE_OK;
@@ -170,7 +151,7 @@ int extractAnim(const char* assetPath, const char* outputPath)
 		// Read an index
 		IndexReference animIdx;
 		int tempCount = 0;
-		while(getNextIndex(indexFile, &animIdx) == 0 && tempCount < 10)
+		while(getNextIndex(indexFile, &animIdx) == 0 && tempCount < 200)
 		{
 			if (animIdx.offset == -1 || animIdx.size == -1)
 				continue;
