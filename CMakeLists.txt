@@ -18,6 +18,8 @@ find_package (PNG)
 include_directories (${PNG_INCLUDE_DIRS})
 add_definitions (${PNG_DEFINITIONS})
 
+set (CMAKE_C_FLAGS ${CMAKE_C_FLAGS} "-std=c99")
+
 add_executable (UOAssetExtractor ${SOURCE_FILES} ${HEADER_FILES})
 target_link_libraries (UOAssetExtractor ${PNG_LIBRARIES})
 
