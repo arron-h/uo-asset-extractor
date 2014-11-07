@@ -3,6 +3,7 @@
 
 #include "uoae.h"
 #include "anim.h"
+#include "art.h"
 
 void printUsage(const char* binaryName)
 {
@@ -37,6 +38,8 @@ int main(int numArgs, char** args)
 
 	if (strcmp(assetType, "anim") == 0)
 		return extractAnim(assetPath, outputPath);
+	else if (strcmp(assetType, "art") == 0)
+		return extractArt(assetPath, outputPath);
 
 	return 0;
 }

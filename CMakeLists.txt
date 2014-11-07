@@ -5,13 +5,15 @@ set (SOURCE_FILES
 	extractor.c
 	anim.c
 	dataindex.c
-	pngspritewriter.c)
+	pngspritewriter.c
+	art.c)
 
 set (HEADER_FILES
 	anim.h
 	uoae.h
 	dataindex.h
-	pngspritewriter.h)
+	pngspritewriter.h
+	art.h)
 
 find_package (PNG)
 
